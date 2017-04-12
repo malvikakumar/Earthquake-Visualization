@@ -1,0 +1,216 @@
+<!--
+Created using JS Bin
+http://jsbin.com
+
+Copyright (c) 2016 by fgonza21 (http://jsbin.com/camaji/10/edit)
+
+Released under the MIT license: http://jsbin.mit-license.org
+-->
+<meta name="robots" content="noindex">
+<html>
+<head>
+  <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script type="text/javascript" src="http://cdnjs.cloudflare.com/ajax/libs/d3/2.10.0/d3.v2.min.js"></script>
+  <script type="text/javascript" src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCzxIup_JOZD-xUYo9hXEElvbKYfZ5vLVg"></script>
+  <style>
+    body, html, #map {
+      font-family: Arial, Helvetica, sans-serif;
+      margin: 0;
+      width: 100%;
+      height: 100%;
+    }
+
+    div#quake-pop-up {
+      display: none;
+      position: absolute;
+      color: white;
+      font-size: 14px;
+      background: rgba(237,30,36,0.5);
+      padding: 5px 10px 5px 10px;
+    }
+
+    div#quake-pop-up-title {
+t
+      font-size: 14px;
+      width: 300px;
+      margin-bottom: 4px;
+      font-weight: bolder;
+    }
+
+
+    div#quake-pop-desc {
+      margin-left: 10px;
+      width: 300px;
+      color: white;
+    }
+
+    div#quake-pop-img {
+      font-size: 30px;
+      font-weight: bolder;
+      color: white;
+    }
+
+    .SvgOverlay {
+      position: relative;
+      width: 100%;
+      height: 100%;
+    }
+
+      .SvgOverlay svg {
+        position: absolute;
+        top: -4000px;
+        left: -4000px;
+        width: 8000px;
+        height: 8000px;
+      }
+
+      .SvgOverlay path {
+        stroke: black;
+        stroke-width: 1px;
+      }
+
+        .SvgOverlay path:hover {
+          fill: blue;
+          cursor: default;
+        }
+  </style>
+  <script>
+
+    function CenterControl(controlDiv, map) {
+
+      // Set CSS for the control border.
+      var controlUI = document.createElement('div');
+
+      controlUI.style.cursor = 'pointer';
+      controlUI.style.textAlign = 'center';
+      controlDiv.appendChild(controlUI);
+
+      // Set CSS for the control interior.
+      var controlText = document.createElement('div');
+      controlText.style.color = 'ed1c24';
+      controlText.style.fontFamily = 'Impact';
+      controlText.style.fontSize = '30px';
+      controlText.style.lineHeight = '38px';
+      controlText.style.paddingLeft = '5px';
+      controlText.style.paddingRight = '5px';
+      controlText.style.paddingTop = '20px';
+      controlText.innerHTML = 'Tremors Around the World Within the Past 30 Days';
+      controlUI.appendChild(controlText);
+    }
+
+
+
+
+
+    $(function () {
+      var map = new google.maps.Map(d3.select("#map").node(), {
+        zoom: 2,
+        mapTypeId: google.maps.MapTypeId.ROADMAP,
+        center: { lat: 33.045579573575154, lng: -96.97189523828126 }
+      });
+
+      //Creating Title Element
+      var centerControlDiv = document.createElement('div');
+      var centerControl = new CenterControl(centerControlDiv, map);
+      centerControlDiv.index = 1;
+      map.controls[google.maps.ControlPosition.TOP_CENTER].push(centerControlDiv);
+
+      //Creating color legend
+      var div = document.createElement('div');
+      div.innerHTML = '<img src="./richter-scale.png" height="40%">';
+      var legend = document.createElement('div');
+      legend.style.paddingBottom = '20px';
+      legend.style.paddingLeft = '30px';
+      legend.index = 1;
+      legend.appendChild(div);
+      map.controls[google.maps.ControlPosition.LEFT_BOTTOM].push(legend);
+
+      var overlay = new google.maps.OverlayView();
+      d3.json("http://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_month.geojson", function (collection) {
+        overlay.onAdd = function () {
+          var layer = d3.select(this.getPanes().overlayMouseTarget).append("div").attr("class", "SvgOverlay");
+          var svg = layer.append("svg");
+          var quakes = svg.append("g").attr("class", "Quakes");
+          overlay.draw = function () {
+            var markerOverlay = this;
+            var overlayProjection = markerOverlay.getProjection();
+            var googleMapProjection = function (coordinates) {
+              var googleCoordinates = new google.maps.LatLng(coordinates[1], coordinates[0]);
+              var pixelCoordinates = overlayProjection.fromLatLngToDivPixel(googleCoordinates);
+              return [pixelCoordinates.x + 4000, pixelCoordinates.y + 4000];
+            }
+            epicenter = d3.geo.path().projection(googleMapProjection);
+            quakes.selectAll("path")
+            //.Animation.BOUNCE
+            .data(collection.features)
+            .attr("d", epicenter)
+            .attr("class", "myPathClass")
+            .enter().append("svg:path")
+            .attr("d", epicenter)
+            .attr("fill", function (d) {
+              if (d.properties.mag < 1 || d.properties.mag == null)
+                return "#ffffff";
+              else if (d.properties.mag >= 1 && d.properties.mag < 2)
+                return "#fee7dc";
+              else if (d.properties.mag >= 2 && d.properties.mag < 3)
+                return "#fcd2c0";
+              else if (d.properties.mag >= 3 && d.properties.mag < 4)
+                return "#fbbea5";
+              else if (d.properties.mag >= 4 && d.properties.mag < 5)
+                return "#f9aa8c";
+              else if (d.properties.mag >= 5 && d.properties.mag < 6)
+                return "#f79676";
+              else if (d.properties.mag >= 6 && d.properties.mag < 7)
+                return "#f58461";
+              else if (d.properties.mag >= 7 && d.properties.mag < 8)
+                return "#f36f4f";
+              else if (d.properties.mag >= 8 && d.properties.mag < 9)
+                return "#f15a39";
+              else if (d.properties.mag >= 9 && d.properties.mag <= 10)
+                return "#ef3f26";
+              else
+                return "#ed1e24";
+            })
+            .on("mouseover", function (d) {
+              var mousePosition = d3.svg.mouse(this);
+              var format = d3.time.format("%Y-%m-%d %HH:%MM:%SS");
+              $("#quake-pop-up").fadeOut(500, function () {
+                // Popup content
+                $("#quake-pop-up-title").html(format(new Date(parseInt(d.properties.time))));
+                $("#quake-pop-img").html(d.properties.mag);
+                $("#quake-pop-desc").html("Type: " + d.properties.type + "<br>Place: " + d.properties.place);
+
+
+                $("#quake-pop-up").css({
+                  "right": 0,
+                  "top": 50
+                });
+                $("#quake-pop-up").fadeIn(500);
+              });
+            })
+            .on("mouseout", function () {
+              $("#quake-pop-up").fadeOut(500);
+            });
+          };
+        };
+        overlay.setMap(map);
+      });
+    });
+
+  </script>
+</head>
+<body>
+  <div id="map"></div>
+  <div id="quake-pop-up">
+    <div id="quake-pop-up-title"></div>
+    <div id="quake-pop-up-content">
+      <table>
+        <tr>
+          <td><div id="quake-pop-img"></div></td>
+          <td><div id="quake-pop-desc"></div></td>
+        </tr>
+      </table>
+    </div>
+  </div>
+</body>
+</html>
